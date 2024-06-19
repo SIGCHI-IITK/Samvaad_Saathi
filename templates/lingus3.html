@@ -1,1 +1,212 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SamvaadSaathi</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+         
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .message-container {
+            display: flex;
+            flex-direction: column;
+            margin-top: 20px;
+            overflow-y: auto; /* Enable vertical scrollbar */
+            max-height: 400px; /* Limit chat box height */
+        }
+        .message {
+            max-width: 70%;
+            padding: 10px;
+            margin: 10px;
+            border-radius: 10px;
+        }
+        .message.sent {
+            align-self: flex-end;
+            background-color: #007bff;
+            color: white;
+        }
+        .message.received {
+            align-self: flex-start;
+            background-color: #f3f3f3;
+            color: #333;
+        }
+        #textInput {
+            width: calc(100% - 20px);
+            margin-bottom: 10px;
+        }
+        #languageSelect {
+            margin-bottom: 10px;
+        }
+        .button-container {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .button-container button {
+            padding: 10px 20px;
+            cursor: pointer;
+        }
+        .record-button {
+            background-color: #ddd; /* Default gray color */
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            cursor: pointer;
+            outline: none;
+            
+        }
+        .record-button.active {
+            background-color: #aaa; /* Gray color when recording */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>SamvaadSaathi</h1>
+        <label for="languageSelect">Select Language:</label>
+        <select id="languageSelect">
+            <option value="en">English (US)</option>
+            <option value="as">Assamese</option>
+            <option value="bn">Bengali</option>
+            <option value="gu">Gujarati</option>
+            <option value="hi">Hindi</option>
+            <option value="kn">Kannada</option>
+            <option value="ks">Kashmiri</option>
+            <option value="kok">Konkani</option>
+            <option value="ml">Malayalam</option>
+            <option value="mni">Manipuri</option>
+            <option value="mr">Marathi</option>
+            <option value="ne">Nepali</option>
+            <option value="or">Oriya</option>
+            <option value="pa">Punjabi</option>
+            <option value="sa">Sanskrit</option>
+            <option value="sd">Sindhi</option>
+            <option value="ta">Tamil</option>
+            <option value="te">Telugu</option>
+            <option value="ur">Urdu</option>
+            <option value="brx">Bodo</option> 
+            <option value="sat">Santhali</option>
+            <option value="mai">Maithili</option>
+            <option value="doi">Dogri</option>
+            <option value="ko">Korean</option>
+            <option value="es">Spanish (Spain)</option>
+        </select>
+        <textarea id="textInput" rows="4" placeholder="Type your message here..."></textarea>
+        <div class="message-container" id="messageContainer"></div>
+        <div class="button-container">
+            <button class="record-button" onclick="toggleRecording()">
+                <img src="mic.png" alt="Record Audio" style="width: 40px; height: 40px;">
+            </button>
+            <button id="sendButton" onclick="sendText()" disabled>
+                <img src="send.png" alt="Send Message" style="width: 30px; height: 30px;">
+            </button>
+        </div>
+       
+    </div>
 
+    <script>
+        let recognition;
+        let isRecording = false;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('textInput').addEventListener('input', function() {
+                const sendButton = document.getElementById('sendButton');
+                if (this.value.trim() !== '') {
+                    sendButton.removeAttribute('disabled');
+                } else {
+                    sendButton.setAttribute('disabled', 'disabled');
+                }
+            });
+        });
+
+        function toggleRecording() {
+            if (isRecording) {
+                stopListening();
+            } else {
+                const lang = document.getElementById('languageSelect').value;
+                recognition = new window.webkitSpeechRecognition();
+                recognition.continuous = false;
+                recognition.interimResults = false;
+                recognition.lang = lang;
+
+                recognition.onresult = function(event) {
+                    const result = event.results[event.results.length - 1];
+                    if (result.isFinal) {
+                        const text = result[0].transcript;
+                        document.getElementById('textInput').value = text;
+                        document.getElementById('sendButton').removeAttribute('disabled');
+                    }
+                };
+
+                recognition.onend = function() {
+                    isRecording = false;
+                    document.querySelector('.record-button').classList.remove('active');
+                };
+
+                recognition.onerror = function(event) {
+                    console.error('Speech recognition error', event.error);
+                    stopListening();
+                };
+
+                recognition.start();
+                isRecording = true;
+                document.querySelector('.record-button').classList.add('active');
+            }
+        }
+
+        function stopListening() {
+            if (recognition) {
+                recognition.stop();
+            }
+            isRecording = false;
+            document.querySelector('.record-button').classList.remove('active');
+        }
+
+        async function send(text, lang) {
+            const response = await fetch('http://127.0.0.1:5000/resp', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ text: text, lang: lang })
+            });
+            const data = await response.json();
+            displayMessage(data.result, 'received');
+        }
+
+        function sendText() {
+            const textInput = document.getElementById('textInput').value;
+            const lang = document.getElementById('languageSelect').value;
+            displayMessage(textInput, 'sent');
+            send(textInput, lang);
+            document.getElementById('textInput').value = '';
+            document.getElementById('sendButton').setAttribute('disabled', 'disabled');
+        }
+
+        function displayMessage(message, type) {
+            const messageContainer = document.getElementById('messageContainer');
+            const messageElement = document.createElement('div');
+            messageElement.textContent = message;
+            messageElement.classList.add('message', type);
+            messageContainer.appendChild(messageElement);
+
+            // Remove excess messages
+            const maxMessages = 50; // Maximum number of messages to display
+            if (messageContainer.children.length > maxMessages) {
+                messageContainer.removeChild(messageContainer.children[0]);
+            }
+
+            // Scroll to bottom
+            messageContainer.scrollTop = messageContainer.scrollHeight;
+        }
+    </script>
+</body>
+</html>
