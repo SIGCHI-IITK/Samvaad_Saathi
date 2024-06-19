@@ -1,0 +1,3 @@
+1. audio button that records audio and types it in textbox
+2. send to sed it. seems like conversation
+3. get response
