@@ -6,4 +6,4 @@ Samvaad Saathi is a web application, to host it on your system locally , follow 
 5. press ctrl + left click on local host url
 6. select the desired language, then you can give either text or audio input in your desired language.
 
-Authors of this Project : Shashwat gupta & Atishay Jain
+Authors : Shashwat gupta & Atishay Jain
